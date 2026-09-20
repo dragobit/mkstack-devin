@@ -1,34 +1,37 @@
-# MKStack
+# mkstack-devin
 
-**The Complete Framework for Building Nostr Clients with AI**
+**MKStack template adapted for Devin-driven Nostr app development.**
 
-MKStack is an AI-powered framework for building Nostr applications with React 18.x, TailwindCSS 3.x, Vite, shadcn/ui, and Nostrify. Build powerful Nostr applications with AI-first development - from social feeds to private messaging, MKStack provides everything you need to create decentralized apps on the Nostr protocol.
+Based on [MKStack](https://soapbox.pub/mkstack) — an AI-first framework for building Nostr applications with React 19.x, TailwindCSS 4.x, Vite, shadcn/ui, and Nostrify. Instead of Dork/Goose/OpenCode, all agent work in this repo is done by [Devin](https://devin.ai).
 
 ## 🚀 Quick Start
 
-Build your Nostr app in 3 simple steps:
+### 1. Use this template
 
-### 1. Install & Create
-```bash
-npm install -g @getstacks/stacks
-stacks mkstack
+This repo is a GitHub template — click **Use this template** (or clone it) to start a new Nostr app.
+
+### 2. Start a Devin session
+
+Open a Devin session against the new repo and describe the app:
+
+```
+"Build a group chat application"
 ```
 
-### 2. Build with AI
-```bash
-stacks agent
-# Tell Dork AI what you want: "Build a group chat application"
-```
+Devin reads `AGENTS.md` and the `.agents/skills/` library (Nostr security, NIP-19 routing, encryption, uploads, zaps, theming, etc.) and ships changes as PRs.
 
-### 3. Deploy Instantly
+### 3. Iterate
+
+Ask Devin for features and fixes; each change arrives as a reviewable PR.
+
 ```bash
-npm run deploy
-# ✅ App deployed to NostrDeploy.com!
+npm run dev    # local dev server
+npm run test   # tsc + eslint + vitest + build
 ```
 
 ## ✨ What Makes MKStack Special
 
-- **🤖 AI-First Development**: Build complete Nostr apps with just one prompt using Dork AI agent
+- **🤖 AI-First Development**: Devin builds complete Nostr apps from a single prompt, guided by `AGENTS.md` + `.agents/skills/`
 - **⚡ 8 Minutes Average**: From idea to deployed application in minutes, not months
 - **🔗 50+ NIPs Supported**: Comprehensive Nostr protocol implementation
 - **🎨 Beautiful UI**: 48+ shadcn/ui components with light/dark theme support
@@ -38,8 +41,8 @@ npm run deploy
 
 ## 🛠 Technology Stack
 
-- **React 18.x**: Stable version with hooks, concurrent rendering, and improved performance
-- **TailwindCSS 3.x**: Utility-first CSS framework for styling
+- **React 19.x**: Hooks, concurrent rendering, ref-as-prop
+- **TailwindCSS 4.x**: Utility-first CSS framework for styling
 - **Vite**: Fast build tool and development server
 - **shadcn/ui**: 48+ unstyled, accessible UI components built with Radix UI
 - **Nostrify**: Nostr protocol framework for Deno and web
@@ -51,7 +54,7 @@ npm run deploy
 
 ### Built with One Prompt
 
-Each of these applications was created with just a single prompt to Dork AI:
+Each of these applications was created with a single prompt to an AI agent on MKStack:
 
 - **Group Chat Application**: `"Build me a group chat application"`
   - [Live Demo](https://groupchat-74z9j26wq-mks-projects-1f1254c4.vercel.app/)
@@ -115,23 +118,13 @@ Real Nostr applications built using MKStack:
 - Real-time event subscriptions
 - Responsive design with mobile support
 
-## 🤖 AI Development with Dork
+## 🤖 AI Development with Devin
 
-MKStack includes Dork, a built-in AI agent that understands your codebase and Nostr protocols:
+This template is designed for [Devin](https://devin.ai) sessions instead of MKStack's built-in Dork agent:
 
-### Supported AI Providers
-
-Configure your AI provider with `stacks configure`:
-
-- **OpenRouter** ([openrouter.ai](https://openrouter.ai/)): Enter your API key from settings
-- **Routstr** ([routstr.com](https://www.routstr.com/)): Use Cashu tokens for payment
-- **PayPerQ** ([ppq.ai](https://ppq.ai/)): OpenAI-compatible API
-
-### How Dork Works
-
-- **Context-Aware**: Understands your entire codebase and project structure
-- **Nostr Expert**: Built-in knowledge of 50+ NIPs and best practices
-- **Instant Implementation**: Makes changes directly to your code following React/TypeScript best practices
+- **Context-Aware**: `AGENTS.md` encodes the project's conventions and Nostr security model; Devin follows it automatically.
+- **Nostr Expert**: `.agents/skills/` ships 20 specialized skills (50+ NIPs, encryption, relay pools, uploads, zaps, testing, theming) that Devin loads on demand.
+- **PR-Based Workflow**: Devin implements changes on branches and opens reviewable PRs.
 
 Example prompts:
 ```bash
@@ -198,17 +191,7 @@ MKStack includes 48+ shadcn/ui components:
 
 ## 🚀 Deployment
 
-Built-in deployment to NostrDeploy.com:
-
-```bash
-npm run deploy
-```
-
-Your app goes live instantly with:
-- Automatic builds
-- CDN distribution
-- HTTPS support
-- Custom domains available
+The build (`npm run build`) outputs a static `dist/` (with a SPA `404.html` fallback) that can be deployed to any static host — Vercel, Netlify, GitHub Pages, or Devin's own deploy flow.
 
 ## 📚 Documentation
 

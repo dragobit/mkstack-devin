@@ -22,12 +22,34 @@ Devin reads `AGENTS.md` and the `.agents/skills/` library (Nostr security, NIP-1
 
 ### 3. Iterate
 
-Ask Devin for features and fixes; each change arrives as a reviewable PR.
+Ask Devin for features and fixes; each change arrives as a reviewable PR. GitHub Actions runs `npm run test` (tsc + eslint + vitest + build) on every PR.
 
 ```bash
 npm run dev    # local dev server
 npm run test   # tsc + eslint + vitest + build
 ```
+
+### 4. Deploy
+
+```bash
+npm run deploy
+# ✅ Live at https://<app-npub>.nsite.lol
+```
+
+Deploys `dist/` to Blossom servers and publishes a NIP-5A nsite manifest — served by public gateways (nsite.lol, nsite.run). A keypair is auto-generated into `.env.nostr-deploy.local` (gitignored). Also works with Devin deploy, Vercel, Netlify, GitHub Pages — `dist/` is fully static.
+
+> Note: upstream's NostrDeploy.com gateway domain is defunct; `scripts/deploy-nsite.mjs` replaces it with the current NIP-5A protocol.
+
+## 🧭 The Workflow
+
+The [Soapbox workflow](https://soapbox.pub/blog/how-soapbox-ships-fast), adapted for Devin:
+
+| Soapbox | Here |
+|---|---|
+| Shakespeare (ideation) | Chat with Devin to explore the idea |
+| MKStack template | This repo — **Use this template** |
+| OpenCode / Dork (deep work) | Devin sessions on the new repo — PR-based, CI-checked |
+| `npm run deploy` | `npm run deploy` → NIP-5A nsite (nsite.lol / nsite.run), Devin deploy, or any static host |
 
 ## ✨ What Makes MKStack Special
 
@@ -191,7 +213,11 @@ MKStack includes 48+ shadcn/ui components:
 
 ## 🚀 Deployment
 
-The build (`npm run build`) outputs a static `dist/` (with a SPA `404.html` fallback) that can be deployed to any static host — Vercel, Netlify, GitHub Pages, or Devin's own deploy flow.
+```bash
+npm run deploy
+```
+
+Builds `dist/` and publishes it as a NIP-5A *nsite*: files are uploaded to Blossom servers and a kind-15128 manifest event is published to Nostr relays. The site is live at `https://<npub>.nsite.lol` (and other nsite gateways) under the generated app keypair. Alternatively, deploy `dist/` to Vercel, Netlify, GitHub Pages, or Devin's own deploy flow — it's a plain static site with a SPA `404.html` fallback.
 
 ## 📚 Documentation
 

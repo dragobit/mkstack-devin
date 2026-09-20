@@ -31,7 +31,14 @@ npm run test   # tsc + eslint + vitest + build
 
 ### 4. Deploy
 
-`npm run build` produces a static `dist/` (with a SPA `404.html` fallback). Ask Devin to deploy it — or push to any static host (Vercel, Netlify, GitHub Pages).
+```bash
+npm run deploy
+# ✅ Live at https://<app-npub>.nsite.lol
+```
+
+Deploys `dist/` to Blossom servers and publishes a NIP-5A nsite manifest — served by public gateways (nsite.lol, nsite.run). A keypair is auto-generated into `.env.nostr-deploy.local` (gitignored). Also works with Devin deploy, Vercel, Netlify, GitHub Pages — `dist/` is fully static.
+
+> Note: upstream's NostrDeploy.com gateway domain is defunct; `scripts/deploy-nsite.mjs` replaces it with the current NIP-5A protocol.
 
 ## 🧭 The Workflow
 
@@ -42,7 +49,7 @@ The [Soapbox workflow](https://soapbox.pub/blog/how-soapbox-ships-fast), adapted
 | Shakespeare (ideation) | Chat with Devin to explore the idea |
 | MKStack template | This repo — **Use this template** |
 | OpenCode / Dork (deep work) | Devin sessions on the new repo — PR-based, CI-checked |
-| `npm run deploy` | Devin deploy, or any static host |
+| `npm run deploy` | `npm run deploy` → NIP-5A nsite (nsite.lol / nsite.run), Devin deploy, or any static host |
 
 ## ✨ What Makes MKStack Special
 
@@ -206,7 +213,11 @@ MKStack includes 48+ shadcn/ui components:
 
 ## 🚀 Deployment
 
-The build (`npm run build`) outputs a static `dist/` (with a SPA `404.html` fallback) deployable to any static host — Vercel, Netlify, GitHub Pages, or Devin's own deploy flow.
+```bash
+npm run deploy
+```
+
+Builds `dist/` and publishes it as a NIP-5A *nsite*: files are uploaded to Blossom servers and a kind-15128 manifest event is published to Nostr relays. The site is live at `https://<npub>.nsite.lol` (and other nsite gateways) under the generated app keypair. Alternatively, deploy `dist/` to Vercel, Netlify, GitHub Pages, or Devin's own deploy flow — it's a plain static site with a SPA `404.html` fallback.
 
 ## 📚 Documentation
 

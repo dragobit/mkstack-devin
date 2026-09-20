@@ -22,12 +22,27 @@ Devin reads `AGENTS.md` and the `.agents/skills/` library (Nostr security, NIP-1
 
 ### 3. Iterate
 
-Ask Devin for features and fixes; each change arrives as a reviewable PR.
+Ask Devin for features and fixes; each change arrives as a reviewable PR. GitHub Actions runs `npm run test` (tsc + eslint + vitest + build) on every PR.
 
 ```bash
 npm run dev    # local dev server
 npm run test   # tsc + eslint + vitest + build
 ```
+
+### 4. Deploy
+
+`npm run build` produces a static `dist/` (with a SPA `404.html` fallback). Ask Devin to deploy it — or push to any static host (Vercel, Netlify, GitHub Pages).
+
+## 🧭 The Workflow
+
+The [Soapbox workflow](https://soapbox.pub/blog/how-soapbox-ships-fast), adapted for Devin:
+
+| Soapbox | Here |
+|---|---|
+| Shakespeare (ideation) | Chat with Devin to explore the idea |
+| MKStack template | This repo — **Use this template** |
+| OpenCode / Dork (deep work) | Devin sessions on the new repo — PR-based, CI-checked |
+| `npm run deploy` | Devin deploy, or any static host |
 
 ## ✨ What Makes MKStack Special
 
@@ -191,7 +206,7 @@ MKStack includes 48+ shadcn/ui components:
 
 ## 🚀 Deployment
 
-The build (`npm run build`) outputs a static `dist/` (with a SPA `404.html` fallback) that can be deployed to any static host — Vercel, Netlify, GitHub Pages, or Devin's own deploy flow.
+The build (`npm run build`) outputs a static `dist/` (with a SPA `404.html` fallback) deployable to any static host — Vercel, Netlify, GitHub Pages, or Devin's own deploy flow.
 
 ## 📚 Documentation
 

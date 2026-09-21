@@ -219,6 +219,8 @@ npm run deploy
 
 Builds `dist/` and publishes it as a NIP-5A *nsite*: files are uploaded to Blossom servers and a kind-15128 manifest event is published to Nostr relays. The site is live at `https://<npub>.nsite.lol` (and other nsite gateways) under the generated app keypair. Alternatively, deploy `dist/` to Vercel, Netlify, GitHub Pages, or Devin's own deploy flow — it's a plain static site with a SPA `404.html` fallback.
 
+**CI deploys:** `.github/workflows/deploy-nsite.yml` deploys to nsite on every push to `main`. Add an `nsec1...` (or hex) key as the `NSITE_NSEC` repository secret — its npub becomes the site's address — and optionally override `NSITE_RELAYS` / `NSITE_BLOSSOM_SERVERS` via repository variables. `.github/workflows/deploy.yml` (GitHub Pages) is disabled by default; re-enable it with a `DEPLOY_GH_PAGES=true` repository variable or run it manually.
+
 ## 📚 Documentation
 
 For detailed documentation on building Nostr applications with MKStack:

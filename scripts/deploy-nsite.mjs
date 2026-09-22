@@ -7,7 +7,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { finalizeEvent, generateSecretKey, getPublicKey, SimplePool } from 'nostr-tools';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
@@ -114,42 +114,105 @@ const pubkey = getPublicKey(skBytes);
 const relays = (env.NOSTR_RELAYS ?? 'wss://nos.lol,wss://relay.primal.net').split(',');
 const blossoms = (env.BLOSSOM_SERVERS ?? 'https://blossom.primal.net').split(',');
 
-const files = [...walk(DIST)].sort();
-console.log(`Deploying ${files.length} files from dist/`);
-
-const pathTags = [];
-for (const file of files) {
-  const blob = readFileSync(file);
-  const urlPath = '/' + relative(DIST, file).split('/').join('/');
-  const { server, sha256: hash } = await blossomUpload(blossoms, skBytes, file, blob);
-  pathTags.push(['path', urlPath, hash, server.replace(/\/$/, '') + '/' + hash]);
-  console.log(`  ${urlPath} -> ${hash.slice(0, 12)}… (${server})`);
-}
-
-const aggregate = sha256(Buffer.from(pathTags.map((t) => t.join(':')).join('\n')));
-
-const manifest = finalizeEvent({
-  kind: 15128, // NIP-5A root site manifest
-  created_at: Math.floor(Date.now() / 1000),
-  tags: [
-    ...pathTags,
-    ['x', aggregate],
-    ['title', pkg.name],
-    ...(process.env.GITHUB_REPOSITORY
-      ? [['source', `https://github.com/${process.env.GITHUB_REPOSITORY}`]]
-      : []),
-    ...blossoms.map((s) => ['server', s.replace(/\/$/, '')]),
-  ],
-  content: '',
-}, skBytes);
+// Optional extras (env-driven):
+//   NSITE_PATH_PREFIX    deploy files under a URL prefix, e.g. "/pr-123"
+//   NSITE_MERGE=1        keep existing manifest paths outside the prefix
+//                        (incremental deploy into a live site)
+//   NSITE_REMOVE_PREFIX  instead of deploying, drop all paths under
+//                        NSITE_PATH_PREFIX from the existing manifest
+const PREFIX = (() => {
+  let p = (process.env.NSITE_PATH_PREFIX ?? '').trim();
+  if (p && !p.startsWith('/')) p = '/' + p;
+  return p.replace(/\/+$/, '');
+})();
+const MERGE = Boolean(process.env.NSITE_MERGE);
+const REMOVE_PREFIX = Boolean(process.env.NSITE_REMOVE_PREFIX);
 
 const pool = new SimplePool();
-const results = await Promise.allSettled(pool.publish(relays, manifest));
-const ok = results.filter((r) => r.status === 'fulfilled').length;
-pool.close(relays);
-console.log(`Manifest published to ${ok}/${relays.length} relays`);
+
+const fetchManifest = () =>
+  pool.get(relays, { kinds: [15128], authors: [pubkey] });
+
+const underPrefix = (urlPath) =>
+  PREFIX && (urlPath === PREFIX || urlPath.startsWith(PREFIX + '/'));
+
+async function publishManifest(pathTags) {
+  const aggregate = sha256(Buffer.from(pathTags.map((t) => t.join(':')).join('\n')));
+  const manifest = finalizeEvent({
+    kind: 15128, // NIP-5A root site manifest
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ...pathTags,
+      ['x', aggregate],
+      ['title', pkg.name],
+      ...(process.env.GITHUB_REPOSITORY
+        ? [['source', `https://github.com/${process.env.GITHUB_REPOSITORY}`]]
+        : []),
+      ...blossoms.map((s) => ['server', s.replace(/\/$/, '')]),
+    ],
+    content: '',
+  }, skBytes);
+
+  const results = await Promise.allSettled(pool.publish(relays, manifest));
+  const ok = results.filter((r) => r.status === 'fulfilled').length;
+  console.log(`Manifest published to ${ok}/${relays.length} relays`);
+  if (ok === 0) {
+    console.error('Failed to publish manifest to any relay.');
+    process.exitCode = 1;
+  }
+}
 
 const npub = nip19.npubEncode(pubkey);
-console.log('\nDeployed:');
-console.log(`  https://${npub}.nsite.lol`);
-console.log(`  https://${npub}.nsite.run`);
+
+if (REMOVE_PREFIX) {
+  // Cleanup mode: drop every path under PREFIX from the existing manifest.
+  const existing = await fetchManifest();
+  if (!existing) {
+    pool.close(relays);
+    console.log('No existing manifest found; nothing to remove.');
+  } else {
+    const kept = existing.tags.filter(
+      (t) => t[0] === 'path' && !underPrefix(t[1]),
+    );
+    const removed =
+      existing.tags.filter((t) => t[0] === 'path').length - kept.length;
+    await publishManifest(kept);
+    pool.close(relays);
+    console.log(`Removed ${removed} entr${removed === 1 ? 'y' : 'ies'} under ${PREFIX}`);
+  }
+} else {
+  const files = [...walk(DIST)].sort();
+  console.log(`Deploying ${files.length} files from dist/${PREFIX ? ` under ${PREFIX}` : ''}`);
+
+  const pathTags = [];
+  for (const file of files) {
+    const blob = readFileSync(file);
+    const urlPath = PREFIX + '/' + relative(DIST, file).split('/').join('/');
+    const { server, sha256: hash } = await blossomUpload(blossoms, skBytes, file, blob);
+    pathTags.push(['path', urlPath, hash, server.replace(/\/$/, '') + '/' + hash]);
+    console.log(`  ${urlPath} -> ${hash.slice(0, 12)}… (${server})`);
+  }
+
+  if (MERGE) {
+    // Keep existing paths outside PREFIX (and not being replaced), so other
+    // sections of the site (e.g. other PR previews) survive this deploy.
+    const existing = await fetchManifest();
+    const newPaths = new Set(pathTags.map((t) => t[1]));
+    const kept = (existing?.tags ?? []).filter(
+      (t) => t[0] === 'path' && !underPrefix(t[1]) && !newPaths.has(t[1]),
+    );
+    if (kept.length) console.log(`Merging ${kept.length} existing path(s) from current manifest`);
+    pathTags.unshift(...kept);
+  }
+
+  await publishManifest(pathTags);
+  pool.close(relays);
+
+  console.log('\nDeployed:');
+  console.log(`  https://${npub}.nsite.lol${PREFIX}`);
+  console.log(`  https://${npub}.nsite.run${PREFIX}`);
+
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, `npub=${npub}\n`);
+  }
+}

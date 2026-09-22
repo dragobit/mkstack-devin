@@ -1,0 +1,110 @@
+name: PR preview on nsite
+
+on:
+  # Publishes each PR's build to the dedicated preview npub under /pr-<N>/
+  # (https://<preview-npub>.nsite.lol/pr-<N>/) via scripts/deploy-nsite.mjs.
+  # The preview site shares one npub: deploys merge into the existing manifest,
+  # and closing the PR removes its paths again. Production's npub is untouched.
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+  pull-requests: write # upsert the preview-URL comment
+
+# Serialize ALL preview deploys: the site manifest is a single replaceable
+# event per npub, so concurrent read-modify-write deploys would clobber
+# each other's paths.
+concurrency:
+  group: "nsite-preview"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Repository secret holding the *preview* keypair's nsec1... (or hex).
+      # Generate a second keypair distinct from production's NSITE_NSEC and add
+      # it as NSITE_PR_NSEC; every step below skips cleanly when it is unset.
+      NSITE_PR_NSEC: ${{ secrets.NSITE_PR_NSEC }}
+      PR_PREFIX: /pr-${{ github.event.pull_request.number }}
+    steps:
+      - name: Checkout repository
+        if: github.event.action != 'closed'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: github.event.action != 'closed'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies and build
+        if: github.event.action != 'closed'
+        # Same as `npm run build` but served under /pr-<N>/.
+        run: |
+          npm install
+          npx vite build -l error --base=${{ env.PR_PREFIX }}/
+          cp dist/index.html dist/404.html
+
+      - name: Deploy preview to nsite
+        id: deploy
+        if: github.event.action != 'closed' && env.NSITE_PR_NSEC != ''
+        env:
+          NOSTR_PRIVATE_KEY: ${{ secrets.NSITE_PR_NSEC }}
+          NOSTR_RELAYS: ${{ vars.NSITE_RELAYS }}
+          BLOSSOM_SERVERS: ${{ vars.NSITE_BLOSSOM_SERVERS }}
+          NSITE_PATH_PREFIX: ${{ env.PR_PREFIX }}
+          NSITE_MERGE: "1"
+        run: node scripts/deploy-nsite.mjs
+
+      - name: Remove preview paths
+        if: github.event.action == 'closed' && env.NSITE_PR_NSEC != ''
+        env:
+          NOSTR_PRIVATE_KEY: ${{ secrets.NSITE_PR_NSEC }}
+          NOSTR_RELAYS: ${{ vars.NSITE_RELAYS }}
+          BLOSSOM_SERVERS: ${{ vars.NSITE_BLOSSOM_SERVERS }}
+          NSITE_PATH_PREFIX: ${{ env.PR_PREFIX }}
+          NSITE_REMOVE_PREFIX: "1"
+        run: node scripts/deploy-nsite.mjs
+
+      - name: Comment preview URL on PR
+        if: github.event.action != 'closed' && env.NSITE_PR_NSEC != ''
+        uses: actions/github-script@v7
+        env:
+          NPUB: ${{ steps.deploy.outputs.npub }}
+        with:
+          script: |
+            const marker = '<!-- nsite-preview -->';
+            const url = `https://${process.env.NPUB}.nsite.lol${{ env.PR_PREFIX }}/`;
+            const body = `${marker}\n**nsite preview:** ${url}\n\nThis preview deploys to a dedicated test npub; production is unaffected.`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: nsite preview skipped
+        if: env.NSITE_PR_NSEC == ''
+        run: >-
+          echo "::notice title=nsite preview skipped::The NSITE_PR_NSEC
+          repository secret is not set. Generate a second keypair (distinct
+          from production's NSITE_NSEC) and add the nsec under Settings →
+          Secrets and variables → Actions to enable PR previews."

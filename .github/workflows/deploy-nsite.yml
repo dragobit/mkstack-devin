@@ -26,6 +26,7 @@ jobs:
       # Repository secret holding the site's nsec1... (or hex) signing key; its npub
       # is the site's address. The deploy step is skipped when it is not set.
       NSITE_NSEC: ${{ secrets.NSITE_NSEC }}
+      NSITE_LATEST_NSEC: ${{ secrets.NSITE_LATEST_NSEC }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,6 +50,17 @@ jobs:
           # Blossom upload servers:
           #   NSITE_RELAYS           e.g. wss://nos.lol,wss://relay.primal.net
           #   NSITE_BLOSSOM_SERVERS  e.g. https://blossom.primal.net,https://blossom.band
+          NOSTR_RELAYS: ${{ vars.NSITE_RELAYS }}
+          BLOSSOM_SERVERS: ${{ vars.NSITE_BLOSSOM_SERVERS }}
+        run: node scripts/deploy-nsite.mjs
+
+      # Optional third keypair: a "latest" mirror on its own npub that tracks
+      # main, as a backup/staging address (distinct from both production's
+      # NSITE_NSEC and the PR-preview keypair). Set NSITE_LATEST_NSEC to enable.
+      - name: Deploy to nsite (latest mirror)
+        if: env.NSITE_LATEST_NSEC != ''
+        env:
+          NOSTR_PRIVATE_KEY: ${{ secrets.NSITE_LATEST_NSEC }}
           NOSTR_RELAYS: ${{ vars.NSITE_RELAYS }}
           BLOSSOM_SERVERS: ${{ vars.NSITE_BLOSSOM_SERVERS }}
         run: node scripts/deploy-nsite.mjs
